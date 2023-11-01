@@ -8,7 +8,7 @@ __all__ = ['bandpass_filter', 'find_inspirations', 'find_expirations',
 
 #import stuff
 import os
-from wav.wav_signal_processing import *
+
 import pandas as pd 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,6 +24,8 @@ import numpy as np
 import matplotlib.patches as mpatches
 plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-light.mplstyle')
 
+sample_rate = SAMPLE_RATE
+
 # Bandpass filter function
 def bandpass_filter(signal, low_freq, high_freq, sample_rate):
     nyquist = 0.5 * sample_rate
@@ -33,40 +35,43 @@ def bandpass_filter(signal, low_freq, high_freq, sample_rate):
     filtered_signal = filtfilt(b, a, signal)
     return filtered_signal
 
-'''# Find inspirations function
-def find_inspirations(signal):
-    inspiration_indices = []
-    above_zero = signal > 0
-    for i in range(1, len(signal)):
-        if above_zero[i] != above_zero[i - 1] and not above_zero[i]:
-            inspiration_indices.append(i)
-'''
-def find_inspirations(signal, sample_rate=1000, min_duration=0.03, max_duration=0.25):
+def find_inspirations(signal, sample_rate=1000, min_duration=0.02, max_duration=0.50, above_zero=None, min_amplitude=20):
     """
-    Identify inspirations in the given signal with duration thresholds.
+    Identify inspirations in the given signal with duration and amplitude thresholds.
     
     Parameters:
     - signal (numpy array): The input signal.
     - sample_rate (int): The sample rate of the signal.
     - min_duration (float): The minimum duration of an inspiration in seconds. Default is 0.03.
     - max_duration (float): The maximum duration of an inspiration in seconds. Default is 0.25.
-    
+    - min_amplitude (float): The minimum amplitude to consider an inspiration. Default is 0.1.
+    - above_zero (list): Optional. A list specifying where the signal is above zero. If None, it is calculated.
+    signal: Unit-less or specific to your application (e.g., voltage, pressure, etc.)
+    sample_rate: Samples per second (Hz)
+    min_duration: Seconds
+    max_duration: Seconds
+    min_amplitude: Same as the unit of the signal
     Returns:
     - numpy array: Indices where inspirations occur.
     """
+    if above_zero is None:
+        above_zero = signal > 0
+        
     inspiration_indices = []
-    above_zero = signal > 0
     possible_inspiration_start = None
-    
+    min_amplitude = min_amplitude
+
     for i in range(1, len(signal)):
         if above_zero[i] != above_zero[i - 1]:
             if not above_zero[i]:
                 # A possible inspiration starts
                 possible_inspiration_start = i
             elif possible_inspiration_start is not None:
-                # A possible inspiration ends, check duration
+                # A possible inspiration ends, check duration and amplitude
                 duration = (i - possible_inspiration_start) / sample_rate
-                if min_duration <= duration <= max_duration:
+                amplitude = np.max(signal[possible_inspiration_start:i]) - np.min(signal[possible_inspiration_start:i])
+                
+                if min_duration <= duration <= max_duration and amplitude >= min_amplitude:
                     inspiration_indices.append(possible_inspiration_start)
                 
                 # Reset the possible inspiration start
@@ -74,8 +79,11 @@ def find_inspirations(signal, sample_rate=1000, min_duration=0.03, max_duration=
                 
     return np.array(inspiration_indices)
 
+
 # Find expirations function
-def find_expirations(signal, inspiration_indices):
+def find_expirations(signal, inspiration_indices, above_zero=None):
+    if above_zero is None:
+        above_zero = []
     expiration_indices = []
     above_zero = signal > 0
     for insp_idx in inspiration_indices:
@@ -111,6 +119,9 @@ def find_full_breaths(inspiration_indices, expiration_indices):
 
 # Time to next inspiration function
 def time_to_next_inspiration_from_insp_start(event_start, inspiration_indices, sample_rate):
+    time_to_next_insp = []
+    laser_breath_insp_start = []
+    next_insp_idx = []
     laser_breath_insp_start = inspiration_indices[inspiration_indices <= event_start][-1]
     next_insp_idx = inspiration_indices[inspiration_indices > event_start][0]
     time_to_next_insp = (next_insp_idx - laser_breath_insp_start) / sample_rate
@@ -118,6 +129,9 @@ def time_to_next_inspiration_from_insp_start(event_start, inspiration_indices, s
 
 # Average time to next inspiration function
 def avg_time_to_next_inspiration_N_breaths_before(sample, inspiration_indices, sample_rate, num_breaths_before=5):
+    avg_time = []
+    prev_insp_indices = []
+    times_to_next_insp = []
     prev_insp_indices = inspiration_indices[inspiration_indices < sample][-num_breaths_before:]
     times_to_next_insp = np.diff(prev_insp_indices) / sample_rate
     avg_time = np.mean(times_to_next_insp)
@@ -141,7 +155,9 @@ def assign_breath_phase(inspiration_indices, signal_length):
     return breath_phases
 
 # Identify the laser events you want to analyze.
-def find_laser_events(laser_channel, event_duration_ms):
+def find_laser_events(laser_channel, event_duration_ms, laser_events=None):
+    if laser_events is None:
+        laser_events = []
     # Set a robust threshold for the laser channel
     max_laser_value = np.max(laser_channel)
     robust_laser_threshold = max_laser_value * 0.01
@@ -159,6 +175,7 @@ def find_laser_events(laser_channel, event_duration_ms):
                 laser_events.append((laser_event_start, i))
                 laser_event_start = None
     # Filter laser events based on duration
+    filtered_laser_events = []
     filtered_laser_events = [(start, end) for start, end in laser_events if np.isclose((end - start) / sample_rate, event_duration_ms / 1000, atol=0.001)]
     return filtered_laser_events
 
@@ -170,6 +187,7 @@ def calculate_breath_phases(insp_start, exp_start, insp_end):
     insp_phase = np.linspace(0, np.pi, insp_length)
     exp_phase = np.linspace(np.pi, 2 * np.pi, exp_length)
     
+    laser_breath_phase = []
     laser_breath_phase = np.concatenate((insp_phase, exp_phase))
     return laser_breath_phase
 
@@ -330,7 +348,7 @@ def plot_cycle_lengths_vs_phase(preceding_lengths, laser_lengths, phases):
     # Show the plot
     plt.show()
 
-def create_box_and_whisker_plot(preceding_breath_durations, laser_breath_durations, laser_event_phase_values, num_bins, exclude_data=False):
+def create_box_and_whisker_plot(preceding_breath_durations=None, laser_breath_durations=None, laser_event_phase_values=None, num_bins=10, exclude_data=False):
     """
     Create a box and whisker plot based on the given data.
 
@@ -344,14 +362,20 @@ def create_box_and_whisker_plot(preceding_breath_durations, laser_breath_duratio
     Returns:
     - A Matplotlib box and whisker plot with legend.
     """
-    
+    if preceding_breath_durations is None:
+        preceding_breath_durations = []
+    if laser_breath_durations is None:
+        laser_breath_durations = []
+    if laser_event_phase_values is None:
+        laser_event_phase_values = []
+
     # Check for equal length of all lists
     if len(preceding_breath_durations) != len(laser_breath_durations) or len(laser_breath_durations) != len(laser_event_phase_values):
         raise ValueError("All lists must have the same length.")
 
     # Step 1: Group data into bins
-    min_phase = min(laser_event_phase_values)
-    max_phase = max(laser_event_phase_values)
+    min_phase = 0
+    max_phase = 2 * np.pi  # Adjusted to 2pi
     bin_edges = np.linspace(min_phase, max_phase, num_bins + 1)
     bin_indices = np.digitize(laser_event_phase_values, bin_edges)
     
@@ -378,7 +402,8 @@ def create_box_and_whisker_plot(preceding_breath_durations, laser_breath_duratio
     bin_centers = [(bin_edges[i] + bin_edges[i+1]) / 2 for i in range(num_bins)]
     preceding_data = [[preceding for preceding, _ in bins.get(i+1, [])] for i in range(num_bins)]
     laser_data = [[laser for _, laser in bins.get(i+1, [])] for i in range(num_bins)]
-    
+    bin_labels = [f"{bin_centers[i]:.2f}" for i in range(num_bins)]
+
     fig, ax = plt.subplots()
     # Get the first two colors from the default color cycle
     default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
@@ -386,8 +411,8 @@ def create_box_and_whisker_plot(preceding_breath_durations, laser_breath_duratio
     color_laser = default_colors[1]
 
     # Create boxplots with patch_artist=True
-    bp1 = ax.boxplot(preceding_data, positions=bin_centers, widths=np.diff(bin_edges), patch_artist=True, labels=[f"Bin {i+1}" for i in range(num_bins)], showfliers=False)
-    bp2 = ax.boxplot(laser_data, positions=bin_centers, widths=np.diff(bin_edges), patch_artist=True, labels=[f"Bin {i+1}" for i in range(num_bins)], showfliers=False)
+    bp1 = ax.boxplot(preceding_data, positions=bin_centers, widths=np.diff(bin_edges), patch_artist=True, labels=bin_labels, showfliers=False)
+    bp2 = ax.boxplot(laser_data, positions=bin_centers, widths=np.diff(bin_edges), patch_artist=True, labels=bin_labels, showfliers=False)
 
     # Set a consistent color for each group across all bins
     for box in bp1['boxes']:
@@ -398,7 +423,7 @@ def create_box_and_whisker_plot(preceding_breath_durations, laser_breath_duratio
     # Add labels and titles
     ax.set_xlabel('Laser Event Phase (in radians)', fontsize=14)
     ax.set_ylabel('Breath Duration (in seconds)', fontsize=14)
-    ax.set_title('Box and Whisker Plot of Breath Durations', fontsize=16)
+    ax.set_title('Breath Duration vs Phase of Laser Inhibition (1ms)', fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)
     ax.grid(True, linestyle='--', linewidth=0.5, color='gray')
 
