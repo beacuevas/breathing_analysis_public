@@ -15,63 +15,11 @@ import matplotlib.pyplot as plt
 
 
 # # Assign Channels
-#     # Assign Channels
 breathing_channel = audio_data[:, 0]
 laser_channel = audio_data[:, 1]
 
 # # Filter the breathing channel
 filtered_breathing_signal = bandpass_filter(breathing_channel, 0.5, 40, sample_rate)
-
-# # Plot the signals for visual inspection
-# plt.figure(figsize=(15, 5))
-
-# # Plot breathing channel
-# plt.subplot(3, 1, 1)
-# plt.plot(filtered_breathing_signal)
-# plt.title('Breathing')
-
-# # Plot laser channel
-# plt.subplot(3, 1, 2)
-# plt.plot(laser_channel)
-# plt.title('Laser')
-
-# plt.tight_layout()
-# plt.show()
-
-# # Define a threshold for laser channel
-# laser_threshold = 4000
-
-# # Find the indices where laser channel crosses the threshold
-# above_threshold_indices = np.where(laser_channel > laser_threshold)[0]
-
-# # Create plots for 3-second windows around each crossing
-# window_size = 50 * sample_rate  # 3 seconds in samples
-
-# plt.figure(figsize=(15, 5))
-
-# # Keep track of the previous index to ensure only one event is included
-# prev_index = None
-
-# for idx in above_threshold_indices:
-#     if prev_index is None or idx - prev_index > window_size:
-#         start_idx = max(0, idx - window_size // 2)
-#         end_idx = min(len(audio_data), idx + window_size // 2)
-        
-#         # Plot breathing channel
-#         plt.subplot(2, 1, 1)
-#         plt.plot(np.arange(start_idx, end_idx) / 1000, filtered_breathing_signal[start_idx:end_idx])
-#         plt.title('Breathing')
-
-#         # Plot laser channel
-#         plt.subplot(2, 1, 2)
-#         plt.plot(np.arange(start_idx, end_idx) / 1000, laser_channel[start_idx:end_idx])
-#         plt.title('Laser')
-#         plt.xlabel('Time (seconds)')
-#         plt.tight_layout()
-#         plt.show()
-#         # Update the previous index
-#         prev_index = idx
-
 
 # Helper function to find laser onset times
 def find_laser_onsets(laser_signal, threshold, sample_rate):
