@@ -6,7 +6,7 @@ from scipy.io import wavfile
 from scipy.signal import butter, filtfilt
 from scipy.stats import linregress
 import seaborn as sns
-from wav.wav_signal_processing import *
+from pleth_breathing_analysis.voltageSignalProcessing import *
 from config import *
 
 def plot_random_full_breaths(file_path, num_breaths=5):

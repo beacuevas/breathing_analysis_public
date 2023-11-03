@@ -1,0 +1,140 @@
+# Imports
+from pleth_breathing_analysis.voltageSignalProcessing import *
+from pleth_breathing_analysis.plots import *
+from scipy.io import wavfile
+from config import *
+import random
+
+if __name__ == "__main__":
+    # Read the WAV file
+    sample_rate, audio_data = wavfile.read(r"C:\Users\Beatriz\data\nk1roprm1-stgtacr-co1-wav\588_10_nk1roprm1_stgtacr2_11012023_3s_10mw.wav")
+
+import numpy as np
+from scipy.signal import butter, filtfilt 
+import matplotlib.pyplot as plt
+
+
+# # Assign Channels
+#     # Assign Channels
+breathing_channel = audio_data[:, 0]
+laser_channel = audio_data[:, 1]
+
+# # Filter the breathing channel
+filtered_breathing_signal = bandpass_filter(breathing_channel, 0.5, 40, sample_rate)
+
+# # Plot the signals for visual inspection
+# plt.figure(figsize=(15, 5))
+
+# # Plot breathing channel
+# plt.subplot(3, 1, 1)
+# plt.plot(filtered_breathing_signal)
+# plt.title('Breathing')
+
+# # Plot laser channel
+# plt.subplot(3, 1, 2)
+# plt.plot(laser_channel)
+# plt.title('Laser')
+
+# plt.tight_layout()
+# plt.show()
+
+# # Define a threshold for laser channel
+# laser_threshold = 4000
+
+# # Find the indices where laser channel crosses the threshold
+# above_threshold_indices = np.where(laser_channel > laser_threshold)[0]
+
+# # Create plots for 3-second windows around each crossing
+# window_size = 50 * sample_rate  # 3 seconds in samples
+
+# plt.figure(figsize=(15, 5))
+
+# # Keep track of the previous index to ensure only one event is included
+# prev_index = None
+
+# for idx in above_threshold_indices:
+#     if prev_index is None or idx - prev_index > window_size:
+#         start_idx = max(0, idx - window_size // 2)
+#         end_idx = min(len(audio_data), idx + window_size // 2)
+        
+#         # Plot breathing channel
+#         plt.subplot(2, 1, 1)
+#         plt.plot(np.arange(start_idx, end_idx) / 1000, filtered_breathing_signal[start_idx:end_idx])
+#         plt.title('Breathing')
+
+#         # Plot laser channel
+#         plt.subplot(2, 1, 2)
+#         plt.plot(np.arange(start_idx, end_idx) / 1000, laser_channel[start_idx:end_idx])
+#         plt.title('Laser')
+#         plt.xlabel('Time (seconds)')
+#         plt.tight_layout()
+#         plt.show()
+#         # Update the previous index
+#         prev_index = idx
+
+
+# Helper function to find laser onset times
+def find_laser_onsets(laser_signal, threshold, sample_rate):
+    # Find the indices where laser channel crosses the threshold
+    above_threshold_indices = np.where(laser_signal > threshold)[0]
+    # Debounce the onsets by taking only the first sample in a contiguous above-threshold region
+    onsets = [above_threshold_indices[0]]
+    for i in range(1, len(above_threshold_indices)):
+        if above_threshold_indices[i] - above_threshold_indices[i - 1] > sample_rate:
+            onsets.append(above_threshold_indices[i])
+    return onsets
+
+# Constants
+LASER_THRESHOLD = 4000
+BEFORE_LASER_SEC = 5
+AFTER_LASER_SEC = 30
+
+# Sample rate and audio data for demonstration purposes
+sample_rate = 1000  # 1000 samples per second
+duration_sec = 120  # 2 minutes
+
+
+# Find laser onset times
+laser_onsets = find_laser_onsets(laser_channel, LASER_THRESHOLD, sample_rate)
+
+# Calculate number of samples to include before and after laser onset
+samples_before = BEFORE_LASER_SEC * sample_rate
+samples_after = AFTER_LASER_SEC * sample_rate
+
+# Set up the figure and axes for the subplots
+num_onsets = len(laser_onsets)
+fig, axes = plt.subplots(num_onsets, figsize=(15, 3 * num_onsets))
+
+# If there's only one onset, wrap the axes variable in a list so that we can iterate over it
+if num_onsets == 1:
+    axes = [axes]
+
+# Loop through each laser onset and plot in a separate subplot
+for i, onset in enumerate(laser_onsets):
+    # Define the window around the laser onset
+    start_idx = max(0, onset - samples_before)
+    end_idx = min(len(breathing_channel), onset + samples_after)
+    
+    # Time vector for x-axis, offset to zero at the laser onset
+    time_vector = (np.arange(start_idx, end_idx) - onset) / sample_rate
+    
+    # Plot the segment of the breathing signal
+    axes[i].plot(time_vector, breathing_channel[start_idx:end_idx], label='Breathing Signal')
+    
+    # Highlight the laser period
+    axes[i].axvspan(0, 3, color='red', alpha=0.3, label='Laser Period' if i == 0 else "")
+    
+    
+    # Set titles and labels
+    axes[i].set_title(f'Laser onset {i+1}')
+    axes[i].set_ylabel('Amplitude')
+    
+    # Only add the legend to the first subplot
+    if i == 0:
+        axes[i].legend(loc='upper right')
+
+# Set common xlabel for the last subplot
+axes[-1].set_xlabel('Time (seconds)')
+
+fig.tight_layout()
+plt.show()

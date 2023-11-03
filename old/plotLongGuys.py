@@ -1,6 +1,6 @@
 # Import necessary libraries
 import os
-from wav.wav_signal_processing import *
+from pleth_breathing_analysis.voltageSignalProcessing import *
 import pandas as pd 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -128,7 +128,7 @@ for i, laser_event_start in enumerate(random_laser_event_starts, start=1):
         time_to_next_insp, laser_breath_insp_start, next_insp_idx = time_to_next_inspiration_from_insp_start(event_start, inspiration_indices, sample_rate)
         
         laser_event_phases.append(laser_event_phase)
-        time_to_next_inspirations.append(time_to_next_insp)
+        time_to_next_inspirations.append(time_to_next_insp) 
         
 # Plot the longest 10% of breath cycles
 plot_multiple_breath_phases(full_breath_cycles, expiration_indices, filtered_breathing_signal, filtered_laser_events, percent=1, plot_laser_event_cycles=False)

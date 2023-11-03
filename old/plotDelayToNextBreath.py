@@ -6,7 +6,7 @@ from scipy.io import wavfile
 from scipy.signal import butter, filtfilt
 from scipy.stats import linregress
 import seaborn as sns
-from wav.wav_signal_processing import *
+from pleth_breathing_analysis.voltageSignalProcessing import *
 from config import *
 
 if __name__ == "__main__":

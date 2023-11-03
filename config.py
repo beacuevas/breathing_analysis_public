@@ -3,10 +3,10 @@ __all__ = ['FOLDER_PATH', 'FILE_PATH', 'EVENT_DURATION_MS', 'NUM_PHASE_BINS', 'N
 
 # Common file paths
 FOLDER_PATH = r"data\nk1roprm1-stgtacr-co1-wav"
-FILE_PATH = r'data\nk1roprm1-stgtacr-co1-wav\584_30_nk1roprm1_stgtacr2_10172023.wav'
+FILE_PATH = r"C:\Users\Beatriz\data\nk1roprm1-stgtacr-co1-wav\588_10_nk1roprm1_stgtacr2_11012023_10ms_10mW.WAV"
 
 # Laser stim parameters
-EVENT_DURATION_MS = 1 # Defaults to 1ms unless specified
+EVENT_DURATION_MS = 10 # Defaults to 1ms unless specified
 
 #Plotting Parameters
 NUM_PHASE_BINS = 20 # How many bins do you want ti split 0-2pi into?
