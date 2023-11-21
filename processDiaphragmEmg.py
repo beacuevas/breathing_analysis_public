@@ -6,7 +6,7 @@ from config import *
 import random
 
 if __name__ == "__main__":
-    # Read the WAV file
+    # Read the WAV file (i exported all the labchart files as wav because it was easiest to deal with in this format)
     sample_rate, audio_data = wavfile.read(r'C:\Users\Beatriz\data\nk1roprm1-chr2-co1\572_03_oprm1nklr_optotag_pbc.wav')
 
 
@@ -44,6 +44,7 @@ plt.title('Diaphragm EMG')
 plt.tight_layout()
 plt.show()
 
+#The section below is the signal processing part of this code that is probably the most helpful. 
 # Define the moving average function
 def moving_average(signal, window_size):
     return np.convolve(signal, np.ones(window_size) / window_size, mode='valid')
@@ -62,7 +63,7 @@ window_size = int(window_duration * sample_rate)
 # Apply the moving average filter
 smoothed_emg = moving_average(thresholded_emg, window_size)
 
-# Set amplitudes below 500 to zero
+# Set amplitudes below 500 to zero ADJUST THIS AS NEEDED FOR YOUR DATA. 
 smoothed_emg[smoothed_emg < 500] = 500
 
 # Compute the average of the smoothed signal
@@ -118,7 +119,7 @@ plt.title('Rectified EMG Signal')
 # Plot thresholded EMG signal for the first 5 seconds
 plt.subplot(4, 1, 3)
 plt.plot(time[:5000], thresholded_emg[:5000])
-plt.title('TWO Thresholded EMG Signal')
+plt.title('Thresholded EMG Signal')
 
 # Plot smoothed EMG signal for the first 5 seconds
 plt.subplot(4, 1, 4)
